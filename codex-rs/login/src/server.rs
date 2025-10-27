@@ -818,3 +818,48 @@ pub async fn run_manual_callback_login(opts: ServerOptions) -> io::Result<()> {
     println!("\n✓ Successfully logged in!\n");
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_callback_url_parsing_with_valid_url() {
+        let callback_url =
+            "http://localhost:1455/auth/callback?code=test_code_123&state=test_state_456";
+        let parsed = url::Url::parse(callback_url).unwrap();
+        let params: std::collections::HashMap<String, String> =
+            parsed.query_pairs().into_owned().collect();
+
+        assert_eq!(params.get("code"), Some(&"test_code_123".to_string()));
+        assert_eq!(params.get("state"), Some(&"test_state_456".to_string()));
+    }
+
+    #[test]
+    fn test_callback_url_parsing_with_encoded_params() {
+        let callback_url = "http://localhost:1455/auth/callback?code=abc%2Bdef&state=xyz%2F123";
+        let parsed = url::Url::parse(callback_url).unwrap();
+        let params: std::collections::HashMap<String, String> =
+            parsed.query_pairs().into_owned().collect();
+
+        assert_eq!(params.get("code"), Some(&"abc+def".to_string()));
+        assert_eq!(params.get("state"), Some(&"xyz/123".to_string()));
+    }
+
+    #[test]
+    fn test_callback_url_parsing_rejects_invalid_url() {
+        let callback_url = "not a valid url";
+        assert!(url::Url::parse(callback_url).is_err());
+    }
+
+    #[test]
+    fn test_callback_url_parsing_handles_missing_params() {
+        let callback_url = "http://localhost:1455/auth/callback?state=test_state";
+        let parsed = url::Url::parse(callback_url).unwrap();
+        let params: std::collections::HashMap<String, String> =
+            parsed.query_pairs().into_owned().collect();
+
+        assert_eq!(params.get("code"), None);
+        assert_eq!(params.get("state"), Some(&"test_state".to_string()));
+    }
+}

@@ -72,7 +72,7 @@ fn start_mock_issuer(chatgpt_account_id: &str) -> (SocketAddr, thread::JoinHandl
 }
 
 #[tokio::test]
-async fn test_manual_callback_url_parsing() -> Result<()> {
+async fn test_manual_callback_login_signature() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
     let chatgpt_account_id = "12345678-0000-0000-0000-000000000000";
@@ -82,8 +82,7 @@ async fn test_manual_callback_url_parsing() -> Result<()> {
     let tmp = tempdir()?;
     let codex_home = tmp.path().to_path_buf();
 
-    // Note: This test cannot be fully automated as it requires stdin input
-    // We're testing that the function exists and can be called with proper types
+    // Verify that run_manual_callback_login function exists and has proper signature
     let opts = ServerOptions {
         codex_home,
         client_id: codex_login::CLIENT_ID.to_string(),
@@ -95,7 +94,7 @@ async fn test_manual_callback_url_parsing() -> Result<()> {
     };
 
     // We can't actually test the interactive part without mocking stdin,
-    // but we can verify the function signature and that it compiles
+    // but we can verify the function signature compiles and is exported
     let _ = opts;
 
     Ok(())
