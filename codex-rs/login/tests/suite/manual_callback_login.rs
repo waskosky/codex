@@ -85,7 +85,7 @@ async fn test_manual_callback_url_parsing() -> Result<()> {
     // Note: This test cannot be fully automated as it requires stdin input
     // We're testing that the function exists and can be called with proper types
     let opts = ServerOptions {
-        codex_home: codex_home.clone(),
+        codex_home,
         client_id: codex_login::CLIENT_ID.to_string(),
         issuer,
         port: 0,

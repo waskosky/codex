@@ -30,6 +30,22 @@ If you've used the Codex CLI before with usage-based billing via an API key and 
 
 Today, the login process entails running a server on `localhost:1455`. If you are on a "headless" server, such as a Docker container or are `ssh`'d into a remote machine, loading `localhost:1455` in the browser on your local machine will not automatically connect to the webserver running on the _headless_ machine, so you must use one of the following workarounds:
 
+### Manual callback mode (Recommended for SSH)
+
+The easiest approach when connected via SSH is to use the `--manual-callback` flag, which allows you to copy-paste the callback URL:
+
+```bash
+codex login --manual-callback
+```
+
+This will:
+1. Display an authorization URL for you to open in your local browser
+2. After authenticating, you'll be redirected to a `localhost:1455/auth/callback?...` URL
+3. Copy the entire URL from your browser's address bar
+4. Paste it back into the terminal where you ran the command
+
+This approach works without requiring SSH port forwarding or copying auth files.
+
 ### Authenticate locally and copy your credentials to the "headless" machine
 
 The easiest solution is likely to run through the `codex login` process on your local machine such that `localhost:1455` _is_ accessible in your web browser. When you complete the authentication process, an `auth.json` file should be available at `$CODEX_HOME/auth.json` (on Mac/Linux, `$CODEX_HOME` defaults to `~/.codex` whereas on Windows, it defaults to `%USERPROFILE%\\.codex`).
