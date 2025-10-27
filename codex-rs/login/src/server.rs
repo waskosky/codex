@@ -821,8 +821,6 @@ pub async fn run_manual_callback_login(opts: ServerOptions) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_callback_url_parsing_with_valid_url() {
         let callback_url =
