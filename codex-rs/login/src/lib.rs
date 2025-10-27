@@ -7,6 +7,7 @@ pub use server::LoginServer;
 pub use server::ServerOptions;
 pub use server::ShutdownHandle;
 pub use server::run_login_server;
+pub use server::run_manual_callback_login;
 
 // Re-export commonly used auth types and helpers from codex-core for compatibility
 pub use codex_app_server_protocol::AuthMode;
