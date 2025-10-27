@@ -720,3 +720,101 @@ pub(crate) async fn obtain_api_key(
     let body: ExchangeResp = resp.json().await.map_err(io::Error::other)?;
     Ok(body.access_token)
 }
+
+/// Run login flow where user manually copies and pastes the callback URL.
+/// This is useful when SSH tunneling is not available or when the browser
+/// is on a different machine than the login server.
+pub async fn run_manual_callback_login(opts: ServerOptions) -> io::Result<()> {
+    let pkce = generate_pkce();
+    let state = opts.force_state.clone().unwrap_or_else(generate_state);
+
+    // We use a fake redirect_uri since the user will be manually copying the callback
+    let redirect_uri = "http://localhost:1455/auth/callback".to_string();
+    let auth_url = build_authorize_url(
+        &opts.issuer,
+        &opts.client_id,
+        &redirect_uri,
+        &pkce,
+        &state,
+        opts.forced_chatgpt_workspace_id.as_deref(),
+    );
+
+    println!("\nTo authenticate, follow these steps:");
+    println!("  1. Open this URL in your browser:");
+    println!("\n     {auth_url}\n");
+    println!("  2. After authenticating, you will be redirected to a URL that starts with:");
+    println!("     http://localhost:1455/auth/callback?...");
+    println!("\n  3. Copy the ENTIRE URL from your browser's address bar and paste it below.\n");
+    print!("Paste the callback URL here: ");
+    io::stdout().flush()?;
+
+    let mut callback_url = String::new();
+    io::stdin().read_line(&mut callback_url)?;
+    let callback_url = callback_url.trim();
+
+    if callback_url.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "No callback URL provided",
+        ));
+    }
+
+    // Parse the callback URL to extract code and state
+    let parsed_url = url::Url::parse(callback_url).map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("Invalid URL format: {e}"),
+        )
+    })?;
+
+    let params: std::collections::HashMap<String, String> =
+        parsed_url.query_pairs().into_owned().collect();
+
+    // Validate state
+    if params.get("state").map(String::as_str) != Some(&state) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "State mismatch - the callback URL may be from a different login attempt",
+        ));
+    }
+
+    // Extract authorization code
+    let code = params.get("code").ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Missing authorization code in callback URL",
+        )
+    })?;
+
+    // Exchange code for tokens
+    let tokens =
+        exchange_code_for_tokens(&opts.issuer, &opts.client_id, &redirect_uri, &pkce, code)
+            .await
+            .map_err(|err| io::Error::other(format!("Token exchange failed: {err}")))?;
+
+    // Check workspace restriction
+    if let Err(message) = ensure_workspace_allowed(
+        opts.forced_chatgpt_workspace_id.as_deref(),
+        &tokens.id_token,
+    ) {
+        return Err(io::Error::new(io::ErrorKind::PermissionDenied, message));
+    }
+
+    // Obtain API key
+    let api_key = obtain_api_key(&opts.issuer, &opts.client_id, &tokens.id_token)
+        .await
+        .ok();
+
+    // Persist tokens
+    persist_tokens_async(
+        &opts.codex_home,
+        api_key,
+        tokens.id_token,
+        tokens.access_token,
+        tokens.refresh_token,
+    )
+    .await?;
+
+    println!("\n✓ Successfully logged in!\n");
+    Ok(())
+}

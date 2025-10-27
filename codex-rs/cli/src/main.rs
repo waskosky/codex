@@ -12,6 +12,7 @@ use codex_cli::login::run_login_status;
 use codex_cli::login::run_login_with_api_key;
 use codex_cli::login::run_login_with_chatgpt;
 use codex_cli::login::run_login_with_device_code;
+use codex_cli::login::run_login_with_manual_callback;
 use codex_cli::login::run_logout;
 use codex_cloud_tasks::Cli as CloudTasksCli;
 use codex_common::CliConfigOverrides;
@@ -173,6 +174,12 @@ struct LoginCommand {
 
     #[arg(long = "device-auth")]
     use_device_code: bool,
+
+    #[arg(
+        long = "manual-callback",
+        help = "Use manual callback mode for SSH/remote scenarios - you'll copy-paste the callback URL"
+    )]
+    use_manual_callback: bool,
 
     /// EXPERIMENTAL: Use custom OAuth issuer base URL (advanced)
     /// Override the OAuth issuer base URL (advanced)
@@ -403,6 +410,13 @@ async fn cli_main(codex_linux_sandbox_exe: Option<PathBuf>) -> anyhow::Result<()
                 None => {
                     if login_cli.use_device_code {
                         run_login_with_device_code(
+                            login_cli.config_overrides,
+                            login_cli.issuer_base_url,
+                            login_cli.client_id,
+                        )
+                        .await;
+                    } else if login_cli.use_manual_callback {
+                        run_login_with_manual_callback(
                             login_cli.config_overrides,
                             login_cli.issuer_base_url,
                             login_cli.client_id,

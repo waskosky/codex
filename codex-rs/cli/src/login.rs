@@ -137,6 +137,37 @@ pub async fn run_login_with_device_code(
     }
 }
 
+/// Login using the manual callback flow for SSH/remote scenarios.
+pub async fn run_login_with_manual_callback(
+    cli_config_overrides: CliConfigOverrides,
+    issuer_base_url: Option<String>,
+    client_id: Option<String>,
+) -> ! {
+    let config = load_config_or_exit(cli_config_overrides).await;
+    if matches!(config.forced_login_method, Some(ForcedLoginMethod::Api)) {
+        eprintln!("ChatGPT login is disabled. Use API key login instead.");
+        std::process::exit(1);
+    }
+    let forced_chatgpt_workspace_id = config.forced_chatgpt_workspace_id.clone();
+    let mut opts = ServerOptions::new(
+        config.codex_home,
+        client_id.unwrap_or(CLIENT_ID.to_string()),
+        forced_chatgpt_workspace_id,
+    );
+    if let Some(iss) = issuer_base_url {
+        opts.issuer = iss;
+    }
+    match codex_login::run_manual_callback_login(opts).await {
+        Ok(()) => {
+            std::process::exit(0);
+        }
+        Err(e) => {
+            eprintln!("Error logging in: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
 pub async fn run_login_status(cli_config_overrides: CliConfigOverrides) -> ! {
     let config = load_config_or_exit(cli_config_overrides).await;
 
